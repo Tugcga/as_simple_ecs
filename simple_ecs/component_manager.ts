@@ -38,10 +38,12 @@ class ComponentArray<T> extends IComponentArray {
         this.m_size--;
     }
 
-    get_data(entity: Entity): T {
-        assert(this.m_entity_to_index_map.has(entity), "Retrieving non-existent component");
-
-        return this.m_component_array[this.m_entity_to_index_map.get(entity)];
+    get_data(entity: Entity): T | null {
+        if(this.m_entity_to_index_map.has(entity)) {
+            return this.m_component_array[this.m_entity_to_index_map.get(entity)];
+        } else {
+            return null;
+        }
     }
 
     entity_destroyed(entity: Entity): void {
@@ -82,7 +84,7 @@ export class ComponentManager {
         this.get_component_array<T>().remove_data(entity);
     }
 
-    get_component<T>(entity: Entity) : T {
+    get_component<T>(entity: Entity) : T | null {
         return this.get_component_array<T>().get_data(entity);
     }
 

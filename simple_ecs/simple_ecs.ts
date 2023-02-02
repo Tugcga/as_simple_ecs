@@ -45,7 +45,7 @@ export class ECS {
         this.m_system_manager.entity_signature_changed(entity, signature);
     }
 
-    get_component<T>(entity: Entity): T {
+    get_component<T>(entity: Entity): T | null {
         return this.m_component_manager.get_component<T>(entity);
     }
 
@@ -56,6 +56,10 @@ export class ECS {
     // systems
     register_system<T>(system: T): T {
         return this.m_system_manager.register_system<T>(system, this);
+    }
+
+    get_system<T>(): T {
+        return this.m_system_manager.get_system<T>();
     }
 
     // T - system, S - component

@@ -2,12 +2,27 @@ import { Signature } from "./signature";
 import { Entity } from "./types";
 import { ECS } from "./simple_ecs";
 
-export abstract class System {
+export class System {
     private m_entities: Set<Entity> = new Set<Entity>();
     private m_entities_array: Array<Entity> = new Array<Entity>();
     private m_ecs: ECS | null = null;
+    private m_active: bool = false;
 
-    abstract update(dt: f32): void;
+    update(dt: f32): void {
+        // this never should be called
+    }
+
+    @inline
+    update_internal(dt: f32): void {
+        if(this.m_active) {
+            this.update(dt);
+        }
+    }
+
+    @inline
+    is_active(): bool {
+        return this.m_active;
+    }
 
     set_ecs(ecs: ECS): void {
         this.m_ecs = ecs;
@@ -17,14 +32,29 @@ export abstract class System {
         return this.m_entities_array;
     }
 
+    singleton(): Entity {
+        assert(this.m_active && this.m_entities_array.length > 0, "Get singleton entity from the system, but it fails");
+        return this.m_entities_array[0];
+    }
+
+    private _rebuild_entities(ent_count: i32): void {
+        if(this.m_entities.size != ent_count) {
+            this.m_entities_array = this.m_entities.values();
+        }
+
+        if(this.m_entities_array.length == 0) {
+            this.m_active = false;
+        } else {
+            this.m_active = true;
+        }
+    }
+
     delete_entity(entity: Entity): void {
         const ent_count = this.m_entities.size;
 
         this.m_entities.delete(entity);
 
-        if(this.m_entities.size != ent_count) {
-            this.m_entities_array = this.m_entities.values();
-        }
+        this._rebuild_entities(ent_count);
     }
 
     add_entity(entity: Entity): void {
@@ -32,9 +62,7 @@ export abstract class System {
 
         this.m_entities.add(entity);
 
-        if(this.m_entities.size != ent_count) {
-            this.m_entities_array = this.m_entities.values();
-        }
+        this._rebuild_entities(ent_count);
     }
 
     get_component<T>(entity: Entity): T | null {
@@ -43,6 +71,20 @@ export abstract class System {
             return local_ecs.get_component<T>(entity);
         }
         return null;
+    }
+
+    remove_component<T>(entity: Entity): void {
+        let local_ecs = this.m_ecs;
+        if(local_ecs) {
+            local_ecs.remove_component<T>(entity);
+        }
+    }
+
+    add_component<T>(entity: Entity, component: T): void {
+        let local_ecs = this.m_ecs;
+        if(local_ecs) {
+            local_ecs.add_component<T>(entity, component);
+        }
     }
 }
 
@@ -61,6 +103,13 @@ export class SystemManager {
         this.m_signatures.set(type_name, new Signature());
 
         return system;
+    }
+
+    get_system<T>(): T {
+        const type_name = nameof<T>();
+        assert(this.m_systems.has(type_name), "System " + type_name + " does not exists");
+
+        return this.m_systems.get(type_name) as T;
     }
 
     set_signature_allow<T>(component: u32): void {
@@ -115,7 +164,7 @@ export class SystemManager {
             const system_name: string = system_keys[i];
             const system: System = this.m_systems.get(system_name);
 
-            system.update(dt);
+            system.update_internal(dt);
         }
     }
 
